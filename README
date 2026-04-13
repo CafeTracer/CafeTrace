@@ -1,0 +1,59 @@
+# Proyecto Fullstack: Flutter + FastAPI
+
+Este repositorio contiene una aplicación fullstack organizada en múltiples componentes:
+
+## Estructura del proyecto
+
+```
+/app        -> Aplicación móvil desarrollada en Flutter
+/backend    -> API backend desarrollada con FastAPI
+/infra      -> Configuración de infraestructura (Docker, Nginx, etc.)
+/docs       -> Documentación del proyecto
+```
+
+---
+
+## Requisitos
+
+* Flutter SDK
+* Python 3.10+
+* Docker (opcional, para despliegue)
+* Git
+
+---
+
+## Ejecución del frontend (Flutter)
+
+```bash
+cd app
+flutter pub get
+flutter run
+```
+
+---
+
+## Ejecución del backend (FastAPI)
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+---
+
+## Infraestructura (opcional)
+
+Desde la raíz del proyecto:
+
+```bash
+cd infra
+docker-compose up --build
+```
+
+---
+
+
+## Estado del proyecto
+
+En desarrollo.
