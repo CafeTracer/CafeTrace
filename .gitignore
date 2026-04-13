@@ -24,14 +24,14 @@ migrate_working_dir/
 #.vscode/
 
 # Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+app/**/doc/api/
+app/**/ios/Flutter/.last_build_id
+app/.dart_tool/
+app/.flutter-plugins-dependencies
+app/.pub-cache/
+app/.pub/
+app/build/
+app/coverage/
 
 # Symbolication related
 app.*.symbols
@@ -40,24 +40,32 @@ app.*.symbols
 app.*.map.json
 
 # Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+app/android/app/debug
+app/android/app/profile
+app/android/app/release
 
 # Additional Flutter/Android/iOS specific
-android/.gradle/
-android/local.properties
-ios/Pods/
-ios/.symlinks/
-web/build/
-.fvm/
-node_modules/
-*.log
-*.tmp
-coverage/
+app/android/.gradle/
+app/android/local.properties
+app/ios/Pods/
+app/ios/.symlinks/
+app/web/build/
+app/.fvm/
+app/node_modules/
+app/*.log
+app/*.tmp
+app/coverage/
 
 # Env y secretos
 .env
 .env.*
 *.pem
 *.key
+
+#backend
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.pyc
+mysql_data/
