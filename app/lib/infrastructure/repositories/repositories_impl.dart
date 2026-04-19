@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/network/api_client.dart';
@@ -13,20 +14,35 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Sesion> login({required String correo, required String password}) async {
-    // Datos de prueba para testing
-    if (correo == 'admin@test.com' && password == 'admin123') {
-      final usuario = Usuario(
-        id: 1,
-        idRol: 1,
-        nombre: 'Admin',
-        apellido: 'Test',
-        correo: 'admin@test.com',
-        telefono: null,
-        activo: true,
-        fechaCreacion: DateTime.now(),
+    try {
+      // Login via API — sin valores quemados
+      final resp = await _dio.post(
+        AppConstants.loginEndpoint,
+        data: {
+          'username': correo,
+          'password': password,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       );
-      const token = 'mock_admin_token';
-      await _storage.write(key: AppConstants.jwtTokenKey, value: token);
+      print('✓ Login response: ${resp.data}');
+
+      final tokenModel = LoginResponseModel.fromJson(resp.data as Map<String, dynamic>);
+      print('✓ Token extraído: ${tokenModel.accessToken}');
+
+      // Guardar token en secure storage
+      await _storage.write(key: AppConstants.jwtTokenKey, value: tokenModel.accessToken);
+      print('✓ Token guardado');
+
+      // Obtener datos del usuario con el token recién guardado
+      final userResp = await _dio.get(AppConstants.meEndpoint);
+      print('✓ User response: ${userResp.data}');
+
+      final usuario = UsuarioModel.fromJson(userResp.data as Map<String, dynamic>).toDomain();
+      print('✓ Usuario parseado: ${usuario.nombre}');
+
+      // Persistir datos del usuario para uso offline
       await _storage.write(key: AppConstants.userDataKey, value: jsonEncode({
         'id_usuario': usuario.id,
         'id_rol': usuario.idRol,
@@ -37,62 +53,13 @@ class AuthRepositoryImpl implements AuthRepository {
         'activo': usuario.activo,
         'fecha_creacion': usuario.fechaCreacion.toIso8601String(),
       }));
-      return Sesion(token: token, usuario: usuario);
+      print('✓ Datos del usuario guardados');
+
+      return Sesion(token: tokenModel.accessToken, usuario: usuario);
+    } catch (e) {
+      print('✗ Error en login: $e');
+      rethrow;
     }
-
-    if (correo == 'user@test.com' && password == 'user123') {
-      final usuario = Usuario(
-        id: 2,
-        idRol: 2,
-        nombre: 'Usuario',
-        apellido: 'Test',
-        correo: 'user@test.com',
-        telefono: '123456789',
-        activo: true,
-        fechaCreacion: DateTime.now(),
-      );
-      const token = 'mock_user_token';
-      await _storage.write(key: AppConstants.jwtTokenKey, value: token);
-      await _storage.write(key: AppConstants.userDataKey, value: jsonEncode({
-        'id_usuario': usuario.id,
-        'id_rol': usuario.idRol,
-        'nombre': usuario.nombre,
-        'apellido': usuario.apellido,
-        'correo': usuario.correo,
-        'telefono': usuario.telefono,
-        'activo': usuario.activo,
-        'fecha_creacion': usuario.fechaCreacion.toIso8601String(),
-      }));
-      return Sesion(token: token, usuario: usuario);
-    }
-
-    // Login normal via API
-    final resp = await _dio.post(
-      AppConstants.loginEndpoint,
-      data: {'correo': correo, 'password': password},
-    );
-    final tokenModel = LoginResponseModel.fromJson(resp.data as Map<String, dynamic>);
-
-    // Guardar token en secure storage
-    await _storage.write(key: AppConstants.jwtTokenKey, value: tokenModel.accessToken);
-
-    // Obtener datos del usuario con el token recién guardado
-    final userResp = await _dio.get('/auth/me');
-    final usuario = UsuarioModel.fromJson(userResp.data as Map<String, dynamic>).toDomain();
-
-    // Persistir datos del usuario para uso offline
-    await _storage.write(key: AppConstants.userDataKey, value: jsonEncode({
-      'id_usuario': usuario.id,
-      'id_rol': usuario.idRol,
-      'nombre': usuario.nombre,
-      'apellido': usuario.apellido,
-      'correo': usuario.correo,
-      'telefono': usuario.telefono,
-      'activo': usuario.activo,
-      'fecha_creacion': usuario.fechaCreacion.toIso8601String(),
-    }));
-
-    return Sesion(token: tokenModel.accessToken, usuario: usuario);
   }
 
   @override
@@ -103,17 +70,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Sesion?> getSesionActual() async {
-    final token = await _storage.read(key: AppConstants.jwtTokenKey);
-    final userData = await _storage.read(key: AppConstants.userDataKey);
-    if (token == null || userData == null) return null;
+    // En desarrollo, siempre forzar login para testing
+    // En producción, descomentar para restaurar sesión persistente
+    return null;
 
-    try {
-      final json = jsonDecode(userData) as Map<String, dynamic>;
-      final usuario = UsuarioModel.fromJson(json).toDomain();
-      return Sesion(token: token, usuario: usuario);
-    } catch (_) {
-      return null;
-    }
+    // Código anterior para restauración de sesión:
+    // final token = await _storage.read(key: AppConstants.jwtTokenKey);
+    // final userData = await _storage.read(key: AppConstants.userDataKey);
+    // if (token == null || userData == null) return null;
+    // try {
+    //   final json = jsonDecode(userData) as Map<String, dynamic>;
+    //   final usuario = UsuarioModel.fromJson(json).toDomain();
+    //   return Sesion(token: token, usuario: usuario);
+    // } catch (_) {
+    //   return null;
+    // }
   }
 }
 
@@ -125,31 +96,13 @@ class UsuarioRepositoryImpl implements UsuarioRepository {
   Future<List<Usuario>> listarUsuarios() async {
     try {
       final resp = await _dio.get(AppConstants.usuariosEndpoint);
-      final list = resp.data as List;
-      return list.map((e) => UsuarioModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
-    } catch (_) {
-      return [
-        Usuario(
-          id: 1,
-          idRol: 1,
-          nombre: 'Admin',
-          apellido: 'Test',
-          correo: 'admin@test.com',
-          telefono: null,
-          activo: true,
-          fechaCreacion: DateTime.now(),
-        ),
-        Usuario(
-          id: 2,
-          idRol: 2,
-          nombre: 'Usuario',
-          apellido: 'Test',
-          correo: 'user@test.com',
-          telefono: '123456789',
-          activo: true,
-          fechaCreacion: DateTime.now(),
-        ),
-      ];
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return rawList.map((e) => UsuarioModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
+    } catch (e) {
+      print('✗ Error en listarUsuarios: $e');
+      rethrow;
     }
   }
 
@@ -191,36 +144,13 @@ class FincaRepositoryImpl implements FincaRepository {
   Future<List<Finca>> listarFincas() async {
     try {
       final resp = await _dio.get(AppConstants.fincasEndpoint);
-      final list = resp.data as List;
-      return list.map((e) => FincaModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
-    } catch (_) {
-      // Datos de prueba
-      return [
-        Finca(
-          id: 1,
-          idMunicipio: 1,
-          nombre: 'Finca El Café',
-          propietario: 'Juan Pérez',
-          direccion: 'Dirección de prueba',
-          latitud: 14.6349,
-          longitud: -90.5069,
-          areaHectareas: 10.5,
-          descripcion: 'Finca de prueba para testing',
-          fechaCreacion: DateTime.now(),
-        ),
-        Finca(
-          id: 2,
-          idMunicipio: 2,
-          nombre: 'Finca La Esperanza',
-          propietario: 'María García',
-          direccion: null,
-          latitud: null,
-          longitud: null,
-          areaHectareas: 15.0,
-          descripcion: null,
-          fechaCreacion: DateTime.now(),
-        ),
-      ];
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return rawList.map((e) => FincaModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
+    } catch (e) {
+      print('✗ Error en listarFincas: $e');
+      rethrow;
     }
   }
 
@@ -257,40 +187,20 @@ class LoteRepositoryImpl implements LoteRepository {
   Future<List<Lote>> listarLotes() async {
     try {
       final resp = await _dio.get(AppConstants.lotesEndpoint);
-      final list = resp.data as List;
-      return list.map((e) => LoteModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
-    } catch (_) {
-      // Datos de prueba si la API no está disponible
-      return [
-        Lote(
-          id: 1,
-          idFinca: 1,
-          nombreFinca: 'Finca El Café',
-          idVariedad: 1,
-          nombreVariedad: 'Caturra',
-          idEstadoLoteActual: 1,
-          nombreEstado: 'En Crecimiento',
-          codigoLote: 'LOTE001',
-          fechaRegistro: DateTime.now().subtract(const Duration(days: 30)),
-          cantidadKg: 500.0,
-          observaciones: 'Lote de prueba',
-          activo: true,
-        ),
-        Lote(
-          id: 2,
-          idFinca: 2,
-          nombreFinca: 'Finca La Esperanza',
-          idVariedad: 2,
-          nombreVariedad: 'Bourbon',
-          idEstadoLoteActual: 2,
-          nombreEstado: 'Listo para Cosecha',
-          codigoLote: 'LOTE002',
-          fechaRegistro: DateTime.now().subtract(const Duration(days: 60)),
-          cantidadKg: 750.0,
-          observaciones: null,
-          activo: true,
-        ),
-      ];
+      print('✓ Lotes response: ${resp.data}');
+      
+      // Extraer lista del campo 'data' si existe, sino usar resp.data directamente
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      
+      print('✓ Lista extraída: $rawList');
+      return rawList
+          .map((e) => LoteModel.fromJson(e as Map<String, dynamic>).toDomain())
+          .toList();
+    } catch (e) {
+      print('✗ Error en listarLotes: $e');
+      rethrow;
     }
   }
 
@@ -310,34 +220,17 @@ class LoteRepositoryImpl implements LoteRepository {
     double? cantidadKg,
     String? observaciones,
   }) async {
-    try {
-      final resp = await _dio.post(AppConstants.lotesEndpoint, data: {
-        'id_finca': idFinca,
-        'id_variedad': idVariedad,
-        'id_estado_lote_actual': idEstadoLoteActual,
-        'codigo_lote': codigoLote,
-        'fecha_registro': fechaRegistro.toIso8601String().split('T')[0],
-        if (cantidadKg != null) 'cantidad_kg': cantidadKg,
-        if (observaciones != null) 'observaciones': observaciones,
-      });
-      final data = resp.data['data'] ?? resp.data;
-      return LoteModel.fromJson(data as Map<String, dynamic>).toDomain();
-    } catch (_) {
-      return Lote(
-        id: -1,
-        idFinca: idFinca,
-        nombreFinca: 'Finca desconocida',
-        idVariedad: idVariedad,
-        nombreVariedad: 'Variedad desconocida',
-        idEstadoLoteActual: idEstadoLoteActual,
-        nombreEstado: 'Estado desconocido',
-        codigoLote: codigoLote,
-        fechaRegistro: fechaRegistro,
-        cantidadKg: cantidadKg,
-        observaciones: observaciones,
-        activo: true,
-      );
-    }
+    final resp = await _dio.post(AppConstants.lotesEndpoint, data: {
+      'id_finca': idFinca,
+      'id_variedad': idVariedad,
+      'id_estado_lote_actual': idEstadoLoteActual,
+      'codigo_lote': codigoLote,
+      'fecha_registro': fechaRegistro.toIso8601String().split('T')[0],
+      if (cantidadKg != null) 'cantidad_kg': cantidadKg,
+      if (observaciones != null) 'observaciones': observaciones,
+    });
+    final data = resp.data['data'] ?? resp.data;
+    return LoteModel.fromJson(data as Map<String, dynamic>).toDomain();
   }
 
   @override
@@ -347,29 +240,12 @@ class LoteRepositoryImpl implements LoteRepository {
     double? cantidadKg,
     String? observaciones,
   }) async {
-    try {
-      final resp = await _dio.put('${AppConstants.lotesEndpoint}/$idLote', data: {
-        if (idEstadoLoteActual != null) 'id_estado_lote_actual': idEstadoLoteActual,
-        if (cantidadKg != null) 'cantidad_kg': cantidadKg,
-        if (observaciones != null) 'observaciones': observaciones,
-      });
-      return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
-    } catch (_) {
-      return Lote(
-        id: idLote,
-        idFinca: 0,
-        nombreFinca: 'Finca desconocida',
-        idVariedad: 0,
-        nombreVariedad: 'Variedad desconocida',
-        idEstadoLoteActual: idEstadoLoteActual ?? 0,
-        nombreEstado: 'Estado desconocido',
-        codigoLote: 'LOTE-$idLote',
-        fechaRegistro: DateTime.now(),
-        cantidadKg: cantidadKg,
-        observaciones: observaciones,
-        activo: true,
-      );
-    }
+    final resp = await _dio.put('${AppConstants.lotesEndpoint}/$idLote', data: {
+      if (idEstadoLoteActual != null) 'id_estado_lote_actual': idEstadoLoteActual,
+      if (cantidadKg != null) 'cantidad_kg': cantidadKg,
+      if (observaciones != null) 'observaciones': observaciones,
+    });
+    return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
   }
 }
 
@@ -381,42 +257,15 @@ class RegistroRepositoryImpl implements RegistroRepository {
   Future<List<RegistroPostcosecha>> listarRegistros(int idLote) async {
     try {
       final resp = await _dio.get('${AppConstants.lotesEndpoint}/$idLote/registros');
-      final list = resp.data as List;
-      return list
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return rawList
           .map((e) => RegistroPostcosechaModel.fromJson(e as Map<String, dynamic>).toDomain())
           .toList();
-    } catch (_) {
-      // Datos de prueba
-      if (idLote == 1) {
-        return [
-          RegistroPostcosecha(
-            id: 1,
-            idLote: 1,
-            idUsuario: 1,
-            idTipoActividad: 1,
-            idEstadoLote: 1,
-            fechaHora: DateTime.now().subtract(const Duration(days: 10)),
-            observacion: 'Registro de prueba',
-            ubicacionRegistro: null,
-            creadoEn: DateTime.now(),
-            variables: [
-              const VariableDetalle(
-                id: 1,
-                idRegistro: 1,
-                idVariable: 1,
-                valor: 65.5,
-                comentario: null,
-                nombreVariable: 'Humedad',
-                unidadSimbolo: '%',
-              ),
-            ],
-            nombreUsuario: 'Admin Test',
-            nombreActividad: 'Siembra',
-            nombreEstado: 'En Crecimiento',
-          ),
-        ];
-      }
-      return [];
+    } catch (e) {
+      print('✗ Error en listarRegistros: $e');
+      rethrow;
     }
   }
 
@@ -503,97 +352,39 @@ class CatalogoRepositoryImpl implements CatalogoRepository {
 
   @override
   Future<List<Catalogo>> listarVariedades() async {
-    try {
-      final resp = await _dio.get('/variedades');
-      return _mapList(resp.data as List, 'id_variedad');
-    } catch (_) {
-      return [
-        Catalogo(id: 1, nombre: 'Caturra'),
-        Catalogo(id: 2, nombre: 'Bourbon'),
-        Catalogo(id: 3, nombre: 'Typica'),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variedades');
+    return _mapList(resp.data as List, 'id_variedad');
   }
 
   @override
   Future<List<Catalogo>> listarEstadosLote() async {
-    try {
-      final resp = await _dio.get('/estados-lote');
-      return _mapList(resp.data as List, 'id_estado_lote');
-    } catch (_) {
-      return [
-        Catalogo(id: 1, nombre: 'En Crecimiento'),
-        Catalogo(id: 2, nombre: 'Listo para Cosecha'),
-        Catalogo(id: 3, nombre: 'Cosechado'),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/estados-lote');
+    return _mapList(resp.data as List, 'id_estado_lote');
   }
 
   @override
   Future<List<Catalogo>> listarTiposActividad() async {
-    try {
-      final resp = await _dio.get('/tipos-actividad');
-      return _mapList(resp.data as List, 'id_tipo_actividad');
-    } catch (_) {
-      return [
-        Catalogo(id: 1, nombre: 'Siembra'),
-        Catalogo(id: 2, nombre: 'Fertilización'),
-        Catalogo(id: 3, nombre: 'Riego'),
-        Catalogo(id: 4, nombre: 'Cosecha'),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/tipos-actividad');
+    return _mapList(resp.data as List, 'id_tipo_actividad');
   }
 
   @override
   Future<List<VariableMonitoreo>> listarVariablesMonitoreo() async {
-    try {
-      final resp = await _dio.get('/variables-monitoreo');
-      final list = resp.data as List;
-      return list.map((e) => VariableMonitoreoModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
-    } catch (_) {
-      return [
-        VariableMonitoreo(
-          id: 1,
-          nombre: 'Humedad del Suelo',
-          idUnidadMedida: 1,
-          requiereAlerta: true,
-          simboloUnidad: '%',
-        ),
-        VariableMonitoreo(
-          id: 2,
-          nombre: 'Temperatura',
-          idUnidadMedida: 2,
-          requiereAlerta: false,
-          simboloUnidad: '°C',
-        ),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variables');
+    final list = resp.data as List;
+    return list.map((e) => VariableMonitoreoModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
   }
 
   @override
   Future<List<Catalogo>> listarDepartamentos() async {
-    try {
-      final resp = await _dio.get('/departamentos');
-      return _mapList(resp.data as List, 'id_departamento');
-    } catch (_) {
-      return [
-        Catalogo(id: 1, nombre: 'Guatemala'),
-        Catalogo(id: 2, nombre: 'Alta Verapaz'),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/departamentos');
+    return _mapList(resp.data as List, 'id_departamento');
   }
 
   @override
   Future<List<Catalogo>> listarMunicipios(int idDepartamento) async {
-    try {
-      final resp = await _dio.get('/municipios', queryParameters: {'id_departamento': idDepartamento});
-      return _mapList(resp.data as List, 'id_municipio');
-    } catch (_) {
-      return [
-        Catalogo(id: 1, nombre: 'Municipio Test'),
-        Catalogo(id: 2, nombre: 'Otro Municipio'),
-      ];
-    }
+    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/municipios', queryParameters: {'id_departamento': idDepartamento});
+    return _mapList(resp.data as List, 'id_municipio');
   }
 }
 

@@ -7,7 +7,7 @@ class AppConstants {
   static const String baseUrl = 'http://10.0.2.2:8000';
   // En producción usar: 'https://{elastic-ip-ec2}'
   // 10.0.2.2 es localhost del host cuando se usa emulador Android
-  static const bool useMockRepositories = true;
+  static const bool useMockRepositories = false;
 
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
@@ -17,12 +17,15 @@ class AppConstants {
   static const String userDataKey = 'user_data';
 
   // ── Endpoints ────────────────────────────────────────────────────────────
-  static const String loginEndpoint = '/auth/login';
-  static const String usuariosEndpoint = '/usuarios';
-  static const String fincasEndpoint = '/fincas';
-  static const String lotesEndpoint = '/lotes';
-  static const String registrosEndpoint = '/registros';
-  static const String reporteEndpoint = '/reporte';
+  static const String loginEndpoint = '/api/v1/auth/login';
+  static const String meEndpoint = '/api/v1/auth/me';
+  static const String usuariosEndpoint = '/api/v1/usuarios';
+  static const String fincasEndpoint = '/api/v1/fincas';
+  static const String lotesEndpoint = '/api/v1/lotes';
+  static const String registrosEndpoint = '/api/v1/registros';
+  static const String catalogosEndpoint = '/api/v1/catalogos';
+  static const String reporteEndpoint = '/api/v1/catalogos';
+
 
   // ── Paginación ───────────────────────────────────────────────────────────
   static const int pageSize = 20;

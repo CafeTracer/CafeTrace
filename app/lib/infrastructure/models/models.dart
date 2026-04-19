@@ -9,8 +9,12 @@ class LoginResponseModel {
   final String tokenType;
 
   LoginResponseModel.fromJson(Map<String, dynamic> json)
-      : accessToken = json['access_token'] as String,
-        tokenType = json['token_type'] as String? ?? 'bearer';
+      : accessToken = json['access_token'] as String? ?? 
+                      json['accessToken'] as String? ?? 
+                      json['token'] as String? ?? '',
+        tokenType = json['token_type'] as String? ?? 
+                   json['tokenType'] as String? ?? 
+                   'bearer';
 }
 
 // ── Usuario ──────────────────────────────────────────────────────────────────
@@ -25,14 +29,16 @@ class UsuarioModel {
   final String fechaCreacion;
 
   UsuarioModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_usuario'] as int,
-        idRol = json['id_rol'] as int,
-        nombre = json['nombre'] as String,
-        apellido = json['apellido'] as String,
-        correo = json['correo'] as String,
+      : id = json['id_usuario'] as int? ?? json['id'] as int? ?? 0,
+        idRol = json['id_rol'] as int? ?? json['idRol'] as int? ?? 0,
+        nombre = json['nombre'] as String? ?? '',
+        apellido = json['apellido'] as String? ?? '',
+        correo = json['correo'] as String? ?? '',
         telefono = json['telefono'] as String?,
         activo = json['activo'] as bool? ?? true,
-        fechaCreacion = json['fecha_creacion'] as String? ?? '';
+        fechaCreacion = json['fecha_creacion'] as String? ?? 
+                        json['fechaCreacion'] as String? ?? 
+                        DateTime.now().toIso8601String();
 
   Usuario toDomain() => Usuario(
         id: id,
@@ -60,10 +66,10 @@ class FincaModel {
   final String fechaCreacion;
 
   FincaModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_finca'] as int,
-        idMunicipio = json['id_municipio'] as int,
-        nombre = json['nombre'] as String,
-        propietario = json['propietario'] as String,
+      : id = json['id_finca'] as int? ?? 0,
+        idMunicipio = json['id_municipio'] as int? ?? 0,
+        nombre = json['nombre'] as String? ?? '',
+        propietario = json['propietario'] as String? ?? '',
         direccion = json['direccion'] as String?,
         latitud = (json['latitud'] as num?)?.toDouble(),
         longitud = (json['longitud'] as num?)?.toDouble(),
@@ -101,18 +107,22 @@ class LoteModel {
   final String? nombreEstado;
 
   LoteModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_lote'] as int,
-        idFinca = json['id_finca'] as int,
-        idVariedad = json['id_variedad'] as int,
-        idEstadoLoteActual = json['id_estado_lote_actual'] as int,
-        codigoLote = json['codigo_lote'] as String,
-        fechaRegistro = json['fecha_registro'] as String,
+      : id = json['id_lote'] as int? ?? 0,
+        idFinca = json['id_finca'] as int? ?? 0,
+        idVariedad = json['id_variedad'] as int? ?? 0,
+        idEstadoLoteActual = json['id_estado_lote_actual'] as int? ?? 
+                             (json['estado_actual'] != null ? 1 : 0),
+        codigoLote = json['codigo_lote'] as String? ?? '',
+        fechaRegistro = json['fecha_registro'] as String? ?? '',
         cantidadKg = (json['cantidad_kg'] as num?)?.toDouble(),
         observaciones = json['observaciones'] as String?,
         activo = json['activo'] as bool? ?? true,
-        nombreFinca = json['nombre_finca'] as String?,
-        nombreVariedad = json['nombre_variedad'] as String?,
-        nombreEstado = json['nombre_estado'] as String?;
+        nombreFinca = json['nombre_finca'] as String? ?? 
+                     json['id_finca']?.toString(),
+        nombreVariedad = json['nombre_variedad'] as String? ?? 
+                        json['id_variedad']?.toString(),
+        nombreEstado = json['nombre_estado'] as String? ?? 
+                      json['estado_actual'] as String?;
 
   Lote toDomain() => Lote(
         id: id,
@@ -124,9 +134,9 @@ class LoteModel {
         cantidadKg: cantidadKg,
         observaciones: observaciones,
         activo: activo,
-        nombreFinca: nombreFinca,
-        nombreVariedad: nombreVariedad,
-        nombreEstado: nombreEstado,
+        nombreFinca: nombreFinca ?? 'Finca',
+        nombreVariedad: nombreVariedad ?? 'Variedad',
+        nombreEstado: nombreEstado ?? 'Desconocido',
       );
 }
 

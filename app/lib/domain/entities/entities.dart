@@ -25,7 +25,7 @@ class Usuario {
   });
 
   String get nombreCompleto => '$nombre $apellido';
-  String get iniciales => '${nombre[0]}${apellido[0]}'.toUpperCase();
+  //String get iniciales => '${nombre[0]}${apellido[0]}'.toUpperCase();
   bool get esAdmin => idRol == 1; // Rol 1 = Administrador según catálogo
 }
 
