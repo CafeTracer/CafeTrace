@@ -64,11 +64,11 @@ cp .env.example .env
 nano .env   # completar todos los valores
 
 # 5. Crear repositorio ECR en AWS (una sola vez)
-aws ecr create-repository --repository-name cafetrace/backend --region us-east-1
+aws ecr create-repository --repository-name cafetrace/backend --region us-east-2
 
 # 6. Instalar Certbot para SSL
 sudo apt-get install -y certbot
-sudo certbot certonly --standalone -d {DOMINIO_O_IP}
+sudo certbot certonly --standalone -d cafetrace.duckdns.org
 # Nota: Let's Encrypt no emite certificados para IPs puras.
 # Para IP directa, usar certificado autofirmado o un dominio gratuito (ej. duckdns.org)
 

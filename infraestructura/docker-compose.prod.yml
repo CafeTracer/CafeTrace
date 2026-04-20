@@ -16,51 +16,41 @@ name: cafetrace
 services:
 
   # ── Backend FastAPI ─────────────────────────────────────────────────────────
-  api:
-    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION:-us-east-1}.amazonaws.com/cafetrace/backend:latest
-    container_name: cafetrace-api
+  db:
+    image: mysql:8.0
+    container_name: postcosecha_db
     restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: postcosecha_cafe
+      MYSQL_USER: postcosecha
+      MYSQL_PASSWORD: postcosecha
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: postcosecha_api
+    restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      SECRET_KEY: ${SECRET_KEY}
-      ALGORITHM: ${ALGORITHM:-HS256}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-    networks:
-      - cafetrace-net
-    # No expone puertos al exterior — solo Nginx accede vía red interna
-    expose:
-      - "8000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ── PostgreSQL ──────────────────────────────────────────────────────────────
-  db:
-    image: postgres:15-alpine
-    container_name: cafetrace-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "8000:8000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - cafetrace-net
-    # Puerto 5432 NO expuesto al exterior — solo accesible dentro de la red Docker
-    expose:
-      - "5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./:/app
 
   # ── Nginx (reverse proxy + SSL) ─────────────────────────────────────────────
   nginx:
@@ -145,3 +135,5 @@ volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  mysql_data:
+
