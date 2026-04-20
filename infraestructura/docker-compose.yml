@@ -1,0 +1,75 @@
+name: cafetrace-dev
+
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Desarrollo local
+#
+# Uso:
+#   docker compose up --build      # primera vez
+#   docker compose up -d           # en background
+#   docker compose down            # detener
+#   docker compose logs -f api     # ver logs del backend
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cafetrace-api-dev
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://cafetrace:cafetrace123@db:5432/cafetrace_db
+      SECRET_KEY: dev-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+    ports:
+      - "8000:8000"     # Expuesto para que Flutter en emulador acceda vía 10.0.2.2:8000
+    volumes:
+      - ./backend:/app  # Hot reload: cambios en código se reflejan sin rebuild
+    networks:
+      - cafetrace-dev-net
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:15-alpine
+    container_name: cafetrace-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cafetrace
+      POSTGRES_PASSWORD: cafetrace123
+      POSTGRES_DB: cafetrace_db
+    ports:
+      - "5432:5432"     # Expuesto para acceso desde herramientas como DBeaver o pgAdmin
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - cafetrace-dev-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cafetrace -d cafetrace_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Adminer: UI web para inspeccionar la BD en desarrollo
+  # Acceder en: http://localhost:8080
+  adminer:
+    image: adminer:4
+    container_name: cafetrace-adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    networks:
+      - cafetrace-dev-net
+
+networks:
+  cafetrace-dev-net:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:

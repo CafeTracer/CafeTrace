@@ -1,0 +1,2 @@
+Este repositorio usa vertical slice: cada módulo tiene 
+router + esquema + lógica de caso de uso.

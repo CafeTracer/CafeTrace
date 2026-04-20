@@ -1,0 +1,125 @@
+name: CaféTrace Mobile CI
+
+# Corre en push a main y en PRs — para la app Flutter
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'           # Solo cuando hay cambios en la carpeta de Flutter
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'app/**'
+
+# Evita builds concurrentes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 1: ANALYZE — análisis estático y tests (corre en todo push y PR)
+# ─────────────────────────────────────────────────────────────────────────────
+  analyze:
+    name: Análisis y tests Flutter
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Generar código (build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Verificar formato de código
+        run: dart format --output=none --set-exit-if-changed .
+        continue-on-error: true   # Advierte pero no bloquea el PR
+
+      - name: Análisis estático (flutter analyze)
+        run: flutter analyze --no-fatal-infos
+
+      - name: Ejecutar tests unitarios
+        run: flutter test --coverage
+        continue-on-error: true   # No hay tests aún — no bloquea
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOB 2: BUILD APK — solo en push a main
+# Genera el APK de debug como artefacto descargable
+# ─────────────────────────────────────────────────────────────────────────────
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17 (requerido por Flutter/Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Generar código (build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Configurar URL del backend para producción
+        # Reemplaza la URL de desarrollo (10.0.2.2) por la URL real del EC2
+        # y desactiva devMode para el build de producción
+        run: |
+          sed -i 's|static const bool devMode = true|static const bool devMode = false|g' \
+            lib/core/constants/app_constants.dart
+          sed -i 's|http://10.0.2.2:8000|${{ secrets.BACKEND_URL }}|g' \
+            lib/core/constants/app_constants.dart
+          echo "✅ URLs actualizadas para producción"
+          grep -n "baseUrl\|devMode" lib/core/constants/app_constants.dart
+
+      - name: Build APK (debug — sin firma requerida)
+        run: flutter build apk --debug --target-platform android-arm64
+
+      - name: Renombrar APK con SHA del commit
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          mv build/app/outputs/flutter-apk/app-debug.apk \
+             build/app/outputs/flutter-apk/cafetrace-$SHORT_SHA.apk
+          echo "APK: cafetrace-$SHORT_SHA.apk"
+          ls -lh build/app/outputs/flutter-apk/
+
+      - name: Subir APK como artefacto de GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: cafetrace-apk-${{ github.sha }}
+          path: app/build/app/outputs/flutter-apk/cafetrace-*.apk
+          retention-days: 30    # El APK queda disponible 30 días para descarga
