@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     # Solo corre cuando el push es a main (no en PRs)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
