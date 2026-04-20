@@ -1,0 +1,140 @@
+name: cafetrace
+
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml — Producción en AWS EC2
+#
+# Uso:
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml pull api && docker compose -f docker-compose.prod.yml up -d --no-deps api
+#
+# Variables requeridas en .env (nunca en el repositorio):
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+#   SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+#   AWS_ACCOUNT_ID, AWS_REGION
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend FastAPI ─────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: postcosecha_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: postcosecha_cafe
+      MYSQL_USER: postcosecha
+      MYSQL_PASSWORD: postcosecha
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../backend/sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+    container_name: postcosecha_api
+    restart: "no"
+    working_dir: /app/backend
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  # ── Nginx (reverse proxy + SSL) ─────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: cafetrace-nginx
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    networks:
+      - cafetrace-net
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: cafetrace-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - cafetrace-net
+    expose:
+      - "9090"
+
+  # ── Node Exporter (métricas del host EC2) ───────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: cafetrace-node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - cafetrace-net
+    expose:
+      - "9100"
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: cafetrace-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-cafetrace2026}
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - cafetrace-net
+    expose:
+      - "3000"
+
+networks:
+  cafetrace-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  mysql_data:
+

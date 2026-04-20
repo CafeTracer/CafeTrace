@@ -10,10 +10,6 @@ void main() {
   runApp(const ProviderScope(child: CafeTraceApp()));
 }
 
-// Credenciales de prueba:
-// Admin: admin@test.com / admin123
-// Usuario: user@test.com / user123
-
 class CafeTraceApp extends ConsumerWidget {
   const CafeTraceApp({super.key});
 

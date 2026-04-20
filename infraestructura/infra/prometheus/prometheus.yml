@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s       # Recolectar métricas cada 15 segundos
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  # ── Backend FastAPI ─────────────────────────────────────────────────────────
+  # Requiere prometheus-fastapi-instrumentator en el backend
+  - job_name: cafetrace-api
+    static_configs:
+      - targets: [api:8000]
+    metrics_path: /metrics
+
+  # ── Métricas del host EC2 (CPU, RAM, disco, red) ────────────────────────────
+  - job_name: node-exporter
+    static_configs:
+      - targets: [node-exporter:9100]
+
+  # ── Prometheus mismo ─────────────────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]

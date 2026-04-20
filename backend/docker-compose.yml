@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: postcosecha_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: postcosecha_cafe
+      MYSQL_USER: postcosecha
+      MYSQL_PASSWORD: postcosecha
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: postcosecha_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+
+volumes:
+  mysql_data:

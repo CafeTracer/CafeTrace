@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql
+python-multipart
+PyJWT
+pwdlib
+pydantic
+pydantic-settings
+alembic
+pytest
+httpx
+pytest-cov

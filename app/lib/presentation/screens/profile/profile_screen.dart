@@ -38,10 +38,10 @@ class ProfileScreen extends ConsumerWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text(
-                      usuario.iniciales,
-                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
-                    ),
+                    // child: Text(
+                    //   usuario.iniciales,
+                    //   style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+                    // ),
                   ),
                 ),
                 const SizedBox(height: 12),

@@ -61,14 +61,14 @@ class AdminUsersScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Text(
-                        u.iniciales,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: u.esAdmin ? AppTheme.admin : AppTheme.primary,
-                        ),
-                      ),
+                      // child: Text(
+                      //   u.iniciales,
+                      //   style: TextStyle(
+                      //     fontWeight: FontWeight.w700,
+                      //     fontSize: 14,
+                      //     color: u.esAdmin ? AppTheme.admin : AppTheme.primary,
+                      //   ),
+                      // ),
                     ),
                   ),
                   title: Text(u.nombreCompleto, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
