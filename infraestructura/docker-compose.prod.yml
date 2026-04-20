@@ -39,7 +39,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
     container_name: postcosecha_api
     restart: unless-stopped
     env_file:
