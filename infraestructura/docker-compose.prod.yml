@@ -29,7 +29,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../backend/sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
@@ -41,17 +41,18 @@ services:
       context: ..
       dockerfile: backend/docker/Dockerfile
     container_name: postcosecha_api
-    restart: unless-stopped
+    restart: "no"
+    working_dir: /app/backend
     env_file:
       - .env
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8000:8000"
     volumes:
-      - ./:/app
-
+      - ../:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
   # ── Nginx (reverse proxy + SSL) ─────────────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
@@ -59,7 +60,7 @@ services:
     restart: unless-stopped
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"
