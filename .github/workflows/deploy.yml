@@ -131,6 +131,7 @@ jobs:
           docker build \
             -t $REGISTRY/cafetrace/backend:$SHA_TAG \
             -t $REGISTRY/cafetrace/backend:latest \
+            -f ./backend/docker/Dockerfile \
             ./backend
 
           docker push $REGISTRY/cafetrace/backend:$SHA_TAG
