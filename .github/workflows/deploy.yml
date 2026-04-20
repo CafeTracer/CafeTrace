@@ -3,7 +3,7 @@ name: CafeTrace CI/CD Pipeline
 # Dispara en push a main (deploy completo) y en PRs hacia main o develop (solo tests)
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
