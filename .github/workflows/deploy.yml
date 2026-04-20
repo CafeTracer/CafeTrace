@@ -57,11 +57,13 @@ jobs:
 
       - name: Ejecutar migraciones en BD de test
         env:
+          PYTHONPATH: .
           DATABASE_URL: mysql+pymysql://cafetrace_test:test_password@127.0.0.1:3306/cafetrace_test
         run: alembic upgrade head
 
       - name: Ejecutar tests con cobertura
         env:
+          PYTHONPATH: .
           DATABASE_URL: mysql+pymysql://cafetrace_test:test_password@127.0.0.1:3306/cafetrace_test
           SECRET_KEY: test-secret-key-only-for-ci
           ALGORITHM: HS256
