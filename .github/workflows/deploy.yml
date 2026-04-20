@@ -67,7 +67,6 @@ jobs:
         run: alembic upgrade head
 
       - name: Ejecutar tests con cobertura
-        continue-on-error: true
         env:
           PYTHONPATH: .
           DATABASE_URL: mysql+pymysql://cafetrace_test:test_password@127.0.0.1:3306/cafetrace_test
@@ -76,7 +75,7 @@ jobs:
           ACCESS_TOKEN_EXPIRE_MINUTES: 60
         run: |
           pytest tests/ \
-            --cov=routers \
+            --cov=app \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             --cov-fail-under=70 \
