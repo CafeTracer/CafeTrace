@@ -88,8 +88,8 @@ Ir a: `Settings del repositorio → Secrets and variables → Actions → New re
 
 | Secret | Descripción |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | Clave de acceso AWS (IAM user con permisos ECR + EC2) |
-| `AWS_SECRET_ACCESS_KEY` | Clave secreta AWS |
+| `AWS_ACCESS_KEY_ID` | Clave de acceso AWS (IAM user con permisos ECR + EC2) | 
+| `AWS_SECRET_ACCESS_KEY` | Clave secreta AWS | 
 | `EC2_HOST` | IP elástica de la instancia EC2 |
 | `EC2_USER` | Usuario SSH (normalmente `ubuntu`) |
 | `EC2_PRIVATE_KEY` | Contenido completo del archivo `.pem` |
