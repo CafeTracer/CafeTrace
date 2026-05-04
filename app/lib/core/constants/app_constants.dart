@@ -4,8 +4,8 @@ class AppConstants {
   AppConstants._();
 
   // ── Entorno ──────────────────────────────────────────────────────────────
-  static const String baseUrl = 'http://10.0.2.2:8000';
-  // En producción usar: 'https://{elastic-ip-ec2}'
+  static const String baseUrl = 'http://cafetrace.duckdns.org:8000';
+  // Para desarrollo local con emulador: 'http://10.0.2.2:8000'
   // 10.0.2.2 es localhost del host cuando se usa emulador Android
   static const bool useMockRepositories = false;
 

@@ -11,9 +11,14 @@ class LoginResponseModel {
   LoginResponseModel.fromJson(Map<String, dynamic> json)
       : accessToken = json['access_token'] as String? ?? 
                       json['accessToken'] as String? ?? 
-                      json['token'] as String? ?? '',
+                      json['token'] as String? ??
+                      (json['data'] is Map ? (json['data']['access_token'] as String? ?? 
+                                              json['data']['accessToken'] as String? ?? 
+                                              json['data']['token'] as String?) : null) ?? '',
         tokenType = json['token_type'] as String? ?? 
                    json['tokenType'] as String? ?? 
+                   (json['data'] is Map ? (json['data']['token_type'] as String? ?? 
+                                          json['data']['tokenType'] as String?) : null) ??
                    'bearer';
 }
 
@@ -29,16 +34,46 @@ class UsuarioModel {
   final String fechaCreacion;
 
   UsuarioModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_usuario'] as int? ?? json['id'] as int? ?? 0,
-        idRol = json['id_rol'] as int? ?? json['idRol'] as int? ?? 0,
-        nombre = json['nombre'] as String? ?? '',
-        apellido = json['apellido'] as String? ?? '',
-        correo = json['correo'] as String? ?? '',
-        telefono = json['telefono'] as String?,
-        activo = json['activo'] as bool? ?? true,
-        fechaCreacion = json['fecha_creacion'] as String? ?? 
-                        json['fechaCreacion'] as String? ?? 
-                        DateTime.now().toIso8601String();
+      : id = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['id_usuario'] as int? ?? data['id'] as int? ?? 0;
+        })(),
+        idRol = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          final id = data['id_rol'] as int? ?? data['idRol'] as int?;
+          if (id != null) return id;
+          final role = (data['rol'] as String? ?? data['role'] as String? ?? '').toLowerCase();
+          if (role == 'administrador') return 1;
+          if (role == 'operario') return 2;
+          if (role == 'supervisor') return 3;
+          return 0;
+        })(),
+        nombre = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['nombre'] as String? ?? '';
+        })(),
+        apellido = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['apellido'] as String? ?? '';
+        })(),
+        correo = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['correo'] as String? ?? '';
+        })(),
+        telefono = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['telefono'] as String?;
+        })(),
+        activo = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['activo'] as bool? ?? true;
+        })(),
+        fechaCreacion = (() {
+          final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
+          return data['fecha_creacion'] as String? ?? 
+                 data['fechaCreacion'] as String? ?? 
+                 DateTime.now().toIso8601String();
+        })();
 
   Usuario toDomain() => Usuario(
         id: id,

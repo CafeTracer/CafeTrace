@@ -16,6 +16,7 @@ def me(current_user = Depends(get_current_user)):
     return {
         "data": {
             "id_usuario": current_user.id_usuario,
+            "id_rol": current_user.id_rol,
             "correo": current_user.correo,
             "nombre": current_user.nombre,
             "apellido": current_user.apellido,

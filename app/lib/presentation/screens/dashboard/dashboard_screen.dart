@@ -13,6 +13,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usuario = ref.watch(usuarioActualProvider);
     final lotesAsync = ref.watch(lotesProvider);
+    final fincasAsync = ref.watch(fincasProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -30,6 +31,11 @@ class DashboardScreen extends ConsumerWidget {
           data: (lotes) {
             final activos = lotes.where((l) => l.activo).length;
             final completados = lotes.where((l) => !l.activo).length;
+            final fincasValue = fincasAsync.when(
+              data: (fincas) => '${fincas.length}',
+              loading: () => '...',
+              error: (_, __) => '—',
+            );
 
             return ListView(
               padding: const EdgeInsets.all(16),
@@ -48,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
                     _StatCard(icon: Icons.inventory_2_outlined, value: '${lotes.length}', label: 'Total lotes', color: AppTheme.primary),
                     _StatCard(icon: Icons.play_circle_outline, value: '$activos', label: 'Activos', color: AppTheme.estadoActivo),
                     _StatCard(icon: Icons.check_circle_outline, value: '$completados', label: 'Completados', color: AppTheme.estadoCompletado),
-                    _StatCard(icon: Icons.landscape_outlined, value: '—', label: 'Fincas', color: AppTheme.accent),
+                    _StatCard(icon: Icons.landscape_outlined, value: fincasValue, label: 'Fincas', color: AppTheme.accent),
                   ],
                 ),
                 const SizedBox(height: 20),

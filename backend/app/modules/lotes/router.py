@@ -60,6 +60,14 @@ def detail_lote(id_lote: int, db: Session = Depends(get_db), _: object = Depends
         "fecha_estado_actual": fecha,
     }}
 
+@router.get("/{id_lote}/registros")
+def list_registros_lote(id_lote: int, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario","Supervisor"))):
+    lote = db.get(Lote, id_lote)
+    if not lote:
+        raise HTTPException(404, "Lote no encontrado")
+    registros = db.execute(select(RegistroPostcosecha).where(RegistroPostcosecha.id_lote == id_lote)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in registros]}
+
 @router.post("")
 def create_lote(payload: LoteCreate, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario"))):
     exists = db.execute(select(Lote).where(Lote.codigo_lote == payload.codigo_lote)).scalar_one_or_none()
