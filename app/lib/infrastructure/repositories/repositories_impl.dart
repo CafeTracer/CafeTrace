@@ -303,7 +303,7 @@ class RegistroRepositoryImpl implements RegistroRepository {
     required List<({int idVariable, double valor, String? comentario})> variables,
   }) async {
     final resp = await _dio.post(
-      '${AppConstants.lotesEndpoint}/$idLote/registros',
+      '${AppConstants.registrosEndpoint}/lotes/$idLote',
       data: {
         'id_usuario': idUsuario,
         'id_tipo_actividad': idTipoActividad,
