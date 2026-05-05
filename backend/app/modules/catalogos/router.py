@@ -27,28 +27,30 @@ def list_catalog(
 ):
     # Normalize and perform case-insensitive lookup to be resilient to client variations
     catalogo_key = (catalogo or '').strip().lower()
-    model = next((m for k, m in MODELS.items() if k.lower() == catalogo_key), None)
 
-    # Fallbacks: singular/plural and hyphen/underscore variants
-    if model is None:
-        if catalogo_key.endswith('s'):
-            base = catalogo_key[:-1]
-            model = next((m for k, m in MODELS.items() if k.lower() == base), None)
-    if model is None:
-        alt = catalogo_key.replace('-', '_')
-        model = next((m for k, m in MODELS.items() if k.lower() == alt), None)
-
-    if model is None:
-        print(f"DEBUG: unknown catalogo requested: '{catalogo}' (normalized='{catalogo_key}'). Available: {list(MODELS.keys())}")
-        raise HTTPException(404, "Catálogo no soportado")
-
-    # Special-case: allow filtering municipios by departamento via query param
-    if catalogo == "municipios":
+    # Handle known special catalogs directly to avoid matching issues
+    if catalogo_key in ("municipios", "municipio"):
         if id_departamento is not None:
             rows = db.execute(select(Municipio).where(Municipio.id_departamento == id_departamento)).scalars().all()
         else:
             rows = db.execute(select(Municipio)).scalars().all()
         return {"data": [orm_to_dict(r) for r in rows]}
+
+    if catalogo_key in ("variables", "variable"):
+        rows = db.execute(select(VariableMonitoreo)).scalars().all()
+        return {"data": [orm_to_dict(r) for r in rows]}
+
+    # Generic lookup in MODELS with fallbacks for pluralization and separators
+    model = next((m for k, m in MODELS.items() if k.lower() == catalogo_key), None)
+    if model is None and catalogo_key.endswith('s'):
+        base = catalogo_key[:-1]
+        model = next((m for k, m in MODELS.items() if k.lower() == base), None)
+    if model is None:
+        alt = catalogo_key.replace('-', '_')
+        model = next((m for k, m in MODELS.items() if k.lower() == alt), None)
+    if model is None:
+        print(f"DEBUG: unknown catalogo requested: '{catalogo}' (normalized='{catalogo_key}'). Available: {list(MODELS.keys())}")
+        raise HTTPException(404, "Catálogo no soportado")
 
     # Default: return all rows for the requested model
     rows = db.execute(select(model)).scalars().all()
