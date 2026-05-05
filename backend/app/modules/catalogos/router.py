@@ -49,8 +49,11 @@ def list_catalog(
         alt = catalogo_key.replace('-', '_')
         model = next((m for k, m in MODELS.items() if k.lower() == alt), None)
     if model is None:
-        print(f"DEBUG: unknown catalogo requested: '{catalogo}' (normalized='{catalogo_key}'). Available: {list(MODELS.keys())}")
-        raise HTTPException(404, "Catálogo no soportado")
+        available = ','.join(list(MODELS.keys()))
+        detail = f"Catálogo no soportado: requested='{catalogo}', normalized='{catalogo_key}', available=[{available}]"
+        # Also print to server logs for operators
+        print(f"DEBUG: {detail}")
+        raise HTTPException(status_code=404, detail=detail)
 
     # Default: return all rows for the requested model
     rows = db.execute(select(model)).scalars().all()
