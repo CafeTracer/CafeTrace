@@ -29,3 +29,4 @@ app.include_router(alertas_router, prefix=settings.api_prefix)
 @app.get("/")
 def health():
     return {"message": "API Postcosecha activa"}
+
