@@ -25,8 +25,21 @@ def list_catalog(
     db: Session = Depends(get_db),
     _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
 ):
-    model = MODELS.get(catalogo)
-    if not model:
+    # Normalize and perform case-insensitive lookup to be resilient to client variations
+    catalogo_key = (catalogo or '').strip().lower()
+    model = next((m for k, m in MODELS.items() if k.lower() == catalogo_key), None)
+
+    # Fallbacks: singular/plural and hyphen/underscore variants
+    if model is None:
+        if catalogo_key.endswith('s'):
+            base = catalogo_key[:-1]
+            model = next((m for k, m in MODELS.items() if k.lower() == base), None)
+    if model is None:
+        alt = catalogo_key.replace('-', '_')
+        model = next((m for k, m in MODELS.items() if k.lower() == alt), None)
+
+    if model is None:
+        print(f"DEBUG: unknown catalogo requested: '{catalogo}' (normalized='{catalogo_key}'). Available: {list(MODELS.keys())}")
         raise HTTPException(404, "Catálogo no soportado")
 
     # Special-case: allow filtering municipios by departamento via query param
@@ -39,6 +52,28 @@ def list_catalog(
 
     # Default: return all rows for the requested model
     rows = db.execute(select(model)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in rows]}
+
+
+@router.get('/municipios')
+def list_municipios(
+    id_departamento: int | None = None,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
+    if id_departamento is not None:
+        rows = db.execute(select(Municipio).where(Municipio.id_departamento == id_departamento)).scalars().all()
+    else:
+        rows = db.execute(select(Municipio)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in rows]}
+
+
+@router.get('/variables')
+def list_variables(
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
+    rows = db.execute(select(VariableMonitoreo)).scalars().all()
     return {"data": [orm_to_dict(r) for r in rows]}
 
 @router.post("/departamentos")
