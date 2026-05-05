@@ -92,8 +92,8 @@ class _ReporteBody extends StatelessWidget {
           child: Column(
             children: [
               _InfoRow('Código', lote.codigoLote),
-              _InfoRow('Finca', lote.nombreFinca ?? '—'),
-              _InfoRow('Variedad', lote.nombreVariedad ?? '—'),
+              _InfoRow('Finca', lote.nombreFinca ?? 'Finca #${lote.idFinca}'),
+              _InfoRow('Variedad', lote.nombreVariedad ?? 'Variedad #${lote.idVariedad}'),
               _InfoRow('Cantidad inicial', lote.cantidadKg != null ? '${lote.cantidadKg} kg' : '—'),
               _InfoRow('Fecha de registro', fmt.format(lote.fechaRegistro)),
               _InfoRow('Estado actual', lote.nombreEstado ?? '—'),

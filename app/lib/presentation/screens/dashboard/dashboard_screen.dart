@@ -199,7 +199,7 @@ class _LoteCard extends StatelessWidget {
       ),
       title: Text(lote.codigoLote, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
       subtitle: Text(
-        '${lote.nombreVariedad ?? 'Variedad'} · ${lote.cantidadKg != null ? '${lote.cantidadKg} kg' : '—'}',
+        '${lote.nombreVariedad ?? 'Variedad #${lote.idVariedad}'} · ${lote.cantidadKg != null ? '${lote.cantidadKg} kg' : '—'}',
         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
       ),
       trailing: lote.nombreEstado != null ? EstadoBadge(lote.nombreEstado!) : null,

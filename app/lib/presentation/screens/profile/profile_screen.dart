@@ -134,7 +134,10 @@ class ProfileScreen extends ConsumerWidget {
                 confirmLabel: 'Cerrar sesión',
                 isDestructive: true,
               );
-              if (ok) await ref.read(authProvider.notifier).logout();
+              if (ok) {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go(AppRoutes.login);
+              }
             },
             icon: const Icon(Icons.logout, color: Colors.red),
             label: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),

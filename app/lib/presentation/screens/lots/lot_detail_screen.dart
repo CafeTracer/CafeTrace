@@ -308,30 +308,7 @@ class _TimelineItem extends ConsumerWidget {
                         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
                       ),
                     ],
-                    // Opciones
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () async {
-                            final ok = await showConfirmDialog(
-                              context,
-                              title: 'Eliminar registro',
-                              message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
-                              confirmLabel: 'Eliminar',
-                              isDestructive: true,
-                            );
-                            if (ok) {
-                              await ref.read(eliminarRegistroProvider((idLote: idLote, idRegistro: registro.id)).future);
-                              if (context.mounted) showSuccessSnack(context, 'Registro eliminado.');
-                            }
-                          },
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
-                          child: const Text('Eliminar', style: TextStyle(fontSize: 11)),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

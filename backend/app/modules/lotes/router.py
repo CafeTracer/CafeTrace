@@ -78,8 +78,20 @@ def create_lote(payload: LoteCreate, db: Session = Depends(get_db), _: object = 
     exists = db.execute(select(Lote).where(Lote.codigo_lote == payload.codigo_lote)).scalar_one_or_none()
     if exists:
         raise HTTPException(409, "Código de lote repetido")
-    obj = Lote(**payload.model_dump())
-    db.add(obj); db.commit(); db.refresh(obj)
+    data = payload.model_dump()
+    # Si no se envía el estado actual del lote, asignar un estado inicial (Recibido) si existe
+    if 'id_estado_lote_actual' not in data:
+        try:
+            estado = db.execute(select(EstadoLote).where(EstadoLote.nombre.ilike('Recibido'))).scalar_one_or_none()
+            default_id = estado.id_estado_lote if estado else 1
+        except Exception:
+            default_id = 1
+        data['id_estado_lote_actual'] = default_id
+
+    obj = Lote(**data)
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
     return {"data": orm_to_dict(obj)}
 
 @router.put("/{id_lote}")

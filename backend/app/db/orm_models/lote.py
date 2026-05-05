@@ -7,6 +7,7 @@ class Lote(Base):
     id_lote: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     id_finca: Mapped[int] = mapped_column(ForeignKey("finca.id_finca", ondelete="RESTRICT"), nullable=False)
     id_variedad: Mapped[int] = mapped_column(ForeignKey("variedad_cafe.id_variedad", ondelete="RESTRICT"), nullable=False)
+    id_estado_lote_actual: Mapped[int] = mapped_column(ForeignKey("estado_lote.id_estado_lote", ondelete="RESTRICT"), nullable=False)
     codigo_lote: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     fecha_registro: Mapped[str] = mapped_column(Date, nullable=False)
     cantidad_kg: Mapped[float | None] = mapped_column(DECIMAL(10,2), nullable=True)
@@ -14,4 +15,5 @@ class Lote(Base):
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     finca = relationship("Finca", back_populates="lotes")
     variedad = relationship("VariedadCafe", back_populates="lotes")
+    estado_actual = relationship("EstadoLote")
     registros = relationship("RegistroPostcosecha", back_populates="lote")

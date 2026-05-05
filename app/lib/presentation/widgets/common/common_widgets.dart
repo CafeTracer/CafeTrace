@@ -231,17 +231,17 @@ Future<bool> showConfirmDialog(
 }) async {
   final result = await showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
+    builder: (dialogContext) => AlertDialog(
       title: Text(title),
       content: Text(message),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => Navigator.pop(dialogContext, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () => Navigator.pop(dialogContext, true),
           style: isDestructive
               ? ElevatedButton.styleFrom(backgroundColor: Colors.red)
               : null,

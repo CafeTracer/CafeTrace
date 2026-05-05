@@ -169,7 +169,7 @@ class _LoteListTile extends StatelessWidget {
       children: [
         const SizedBox(height: 2),
         Text(
-          '${lote.nombreFinca ?? 'Finca'} · ${lote.nombreVariedad ?? 'Variedad'}',
+          '${lote.nombreFinca ?? 'Finca #${lote.idFinca}'} · ${lote.nombreVariedad ?? 'Variedad #${lote.idVariedad}'}',
           style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
         ),
         if (lote.cantidadKg != null) ...[

@@ -140,11 +140,14 @@ class UsuarioRepositoryImpl implements UsuarioRepository {
 
   @override
   Future<Usuario> actualizarEstado({required int idUsuario, required bool activo}) async {
-    final resp = await _dio.patch(
-      '${AppConstants.usuariosEndpoint}/$idUsuario/estado',
+    final resp = await _dio.put(
+      '${AppConstants.usuariosEndpoint}/$idUsuario',
       data: {'activo': activo},
     );
-    return UsuarioModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return UsuarioModel.fromJson(data).toDomain();
   }
 }
 
@@ -207,9 +210,61 @@ class LoteRepositoryImpl implements LoteRepository {
           : resp.data as List;
       
       print('✓ Lista extraída: $rawList');
-      return rawList
-          .map((e) => LoteModel.fromJson(e as Map<String, dynamic>).toDomain())
-          .toList();
+      // Parse inicial a objetos de dominio
+      final List<Lote> lotes = rawList.map<Lote>((e) => LoteModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
+
+      // Si faltan nombres desnormalizados, intentar obtenerlos desde fincas/variedades
+      final needFill = lotes.any((l) => l.nombreFinca == null || l.nombreVariedad == null);
+      if (!needFill) return lotes;
+
+      final Map<int, String> fincasMap = {};
+      final Map<int, String> variedadesMap = {};
+
+      try {
+        final fResp = await _dio.get(AppConstants.fincasEndpoint);
+        final List fList = (fResp.data is Map && fResp.data.containsKey('data')) ? fResp.data['data'] as List : fResp.data as List;
+        for (final f in fList) {
+          if (f is Map) {
+            final id = f['id_finca'] as int?;
+            final nombre = f['nombre'] as String?;
+            if (id != null && nombre != null) fincasMap[id] = nombre;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final vResp = await _dio.get('${AppConstants.catalogosEndpoint}/variedades');
+        final List vList = (vResp.data is Map && vResp.data.containsKey('data')) ? vResp.data['data'] as List : vResp.data as List;
+        for (final v in vList) {
+          if (v is Map) {
+            final id = v['id_variedad'] as int?;
+            final nombre = v['nombre'] as String?;
+            if (id != null && nombre != null) variedadesMap[id] = nombre;
+          }
+        }
+      } catch (_) {}
+
+      final List<Lote> filled = lotes.map<Lote>((l) {
+        final nf = l.nombreFinca ?? fincasMap[l.idFinca];
+        final nv = l.nombreVariedad ?? variedadesMap[l.idVariedad];
+        if (nf == l.nombreFinca && nv == l.nombreVariedad) return l;
+        return Lote(
+          id: l.id,
+          idFinca: l.idFinca,
+          idVariedad: l.idVariedad,
+          idEstadoLoteActual: l.idEstadoLoteActual,
+          codigoLote: l.codigoLote,
+          fechaRegistro: l.fechaRegistro,
+          cantidadKg: l.cantidadKg,
+          observaciones: l.observaciones,
+          activo: l.activo,
+          nombreFinca: nf,
+          nombreVariedad: nv,
+          nombreEstado: l.nombreEstado,
+        );
+      }).toList();
+
+      return filled;
     } catch (e) {
       print('✗ Error en listarLotes: $e');
       rethrow;

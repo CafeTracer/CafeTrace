@@ -1,4 +1,14 @@
+import 'dart:convert';
 import '../../domain/entities/entities.dart';
+
+String? _repairEncoding(String? s) {
+  if (s == null) return null;
+  try {
+    return utf8.decode(latin1.encode(s));
+  } catch (_) {
+    return s;
+  }
+}
 
 /// Modelos de infraestructura: mapean JSON del backend a entidades del dominio.
 /// Si Jorge cambia el nombre de un campo, solo se modifica aquí.
@@ -50,19 +60,19 @@ class UsuarioModel {
         })(),
         nombre = (() {
           final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
-          return data['nombre'] as String? ?? '';
+          return _repairEncoding(data['nombre'] as String?) ?? '';
         })(),
         apellido = (() {
           final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
-          return data['apellido'] as String? ?? '';
+          return _repairEncoding(data['apellido'] as String?) ?? '';
         })(),
         correo = (() {
           final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
-          return data['correo'] as String? ?? '';
+          return _repairEncoding(data['correo'] as String?) ?? '';
         })(),
         telefono = (() {
           final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
-          return data['telefono'] as String?;
+          return _repairEncoding(data['telefono'] as String?);
         })(),
         activo = (() {
           final data = (json['data'] is Map ? json['data'] as Map<String, dynamic> : json);
@@ -103,13 +113,13 @@ class FincaModel {
   FincaModel.fromJson(Map<String, dynamic> json)
       : id = json['id_finca'] as int? ?? 0,
         idMunicipio = json['id_municipio'] as int? ?? 0,
-        nombre = json['nombre'] as String? ?? '',
-        propietario = json['propietario'] as String? ?? '',
-        direccion = json['direccion'] as String?,
+        nombre = _repairEncoding(json['nombre'] as String?) ?? '',
+        propietario = _repairEncoding(json['propietario'] as String?) ?? '',
+        direccion = _repairEncoding(json['direccion'] as String?),
         latitud = (json['latitud'] as num?)?.toDouble(),
         longitud = (json['longitud'] as num?)?.toDouble(),
         areaHectareas = (json['area_hectareas'] as num?)?.toDouble(),
-        descripcion = json['descripcion'] as String?,
+        descripcion = _repairEncoding(json['descripcion'] as String?),
         fechaCreacion = json['fecha_creacion'] as String? ?? '';
 
   Finca toDomain() => Finca(
@@ -147,17 +157,14 @@ class LoteModel {
         idVariedad = json['id_variedad'] as int? ?? 0,
         idEstadoLoteActual = json['id_estado_lote_actual'] as int? ?? 
                              (json['estado_actual'] != null ? 1 : 0),
-        codigoLote = json['codigo_lote'] as String? ?? '',
+        codigoLote = _repairEncoding(json['codigo_lote'] as String?) ?? '',
         fechaRegistro = json['fecha_registro'] as String? ?? '',
         cantidadKg = (json['cantidad_kg'] as num?)?.toDouble(),
-        observaciones = json['observaciones'] as String?,
+        observaciones = _repairEncoding(json['observaciones'] as String?),
         activo = json['activo'] as bool? ?? true,
-        nombreFinca = json['nombre_finca'] as String? ?? 
-                     json['id_finca']?.toString(),
-        nombreVariedad = json['nombre_variedad'] as String? ?? 
-                        json['id_variedad']?.toString(),
-        nombreEstado = json['nombre_estado'] as String? ?? 
-                      json['estado_actual'] as String?;
+        nombreFinca = _repairEncoding(json['nombre_finca'] as String?),
+        nombreVariedad = _repairEncoding(json['nombre_variedad'] as String?),
+        nombreEstado = _repairEncoding(json['nombre_estado'] as String?) ?? _repairEncoding(json['estado_actual'] as String?);
 
   Lote toDomain() => Lote(
         id: id,
@@ -169,8 +176,8 @@ class LoteModel {
         cantidadKg: cantidadKg,
         observaciones: observaciones,
         activo: activo,
-        nombreFinca: nombreFinca ?? 'Finca',
-        nombreVariedad: nombreVariedad ?? 'Variedad',
+        nombreFinca: nombreFinca,
+        nombreVariedad: nombreVariedad,
         nombreEstado: nombreEstado ?? 'Desconocido',
       );
 }
@@ -190,9 +197,9 @@ class VariableDetalleModel {
         idRegistro = (json['id_registro'] as int?) ?? 0,
         idVariable = (json['id_variable'] as int?) ?? 0,
         valor = (json['valor'] as num?)?.toDouble() ?? 0.0,
-        comentario = json['comentario'] as String?,
-        nombreVariable = json['nombre_variable'] as String?,
-        unidadSimbolo = json['unidad_simbolo'] as String?;
+        comentario = _repairEncoding(json['comentario'] as String?),
+        nombreVariable = _repairEncoding(json['nombre_variable'] as String?),
+        unidadSimbolo = _repairEncoding(json['unidad_simbolo'] as String?);
 
   VariableDetalle toDomain() => VariableDetalle(
         id: id,
@@ -228,15 +235,15 @@ class RegistroPostcosechaModel {
         idTipoActividad = (json['id_tipo_actividad'] as int?) ?? 0,
         idEstadoLote = (json['id_estado_lote'] as int?) ?? 0,
         fechaHora = (json['fecha_hora'] as String?) ?? '',
-        observacion = json['observacion'] as String?,
-        ubicacionRegistro = json['ubicacion_registro'] as String?,
+        observacion = _repairEncoding(json['observacion'] as String?),
+        ubicacionRegistro = _repairEncoding(json['ubicacion_registro'] as String?),
         creadoEn = (json['creado_en'] as String?) ?? '',
         variables = ((json['variables'] as List?) ?? [])
             .map((v) => VariableDetalleModel.fromJson(v as Map<String, dynamic>))
             .toList(),
-        nombreActividad = json['nombre_actividad'] as String?,
-        nombreEstado = json['nombre_estado'] as String?,
-        nombreUsuario = json['nombre_usuario'] as String?;
+        nombreActividad = _repairEncoding(json['nombre_actividad'] as String?),
+        nombreEstado = _repairEncoding(json['nombre_estado'] as String?),
+        nombreUsuario = _repairEncoding(json['nombre_usuario'] as String?);
 
   RegistroPostcosecha toDomain() => RegistroPostcosecha(
         id: id,
@@ -263,8 +270,8 @@ class CatalogoModel {
 
   CatalogoModel.fromJson(Map<String, dynamic> json, String idKey)
       : id = json[idKey] as int,
-        nombre = json['nombre'] as String,
-        descripcion = json['descripcion'] as String?;
+        nombre = _repairEncoding(json['nombre'] as String?) ?? '',
+        descripcion = _repairEncoding(json['descripcion'] as String?);
 
   Catalogo toDomain() => Catalogo(id: id, nombre: nombre, descripcion: descripcion);
 }
