@@ -186,10 +186,10 @@ class VariableDetalleModel {
   final String? unidadSimbolo;
 
   VariableDetalleModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_detalle'] as int,
-        idRegistro = json['id_registro'] as int,
-        idVariable = json['id_variable'] as int,
-        valor = (json['valor'] as num).toDouble(),
+      : id = (json['id_detalle'] as int?) ?? 0,
+        idRegistro = (json['id_registro'] as int?) ?? 0,
+        idVariable = (json['id_variable'] as int?) ?? 0,
+        valor = (json['valor'] as num?)?.toDouble() ?? 0.0,
         comentario = json['comentario'] as String?,
         nombreVariable = json['nombre_variable'] as String?,
         unidadSimbolo = json['unidad_simbolo'] as String?;
@@ -222,15 +222,15 @@ class RegistroPostcosechaModel {
   final String? nombreUsuario;
 
   RegistroPostcosechaModel.fromJson(Map<String, dynamic> json)
-      : id = json['id_registro'] as int,
-        idLote = json['id_lote'] as int,
-        idUsuario = json['id_usuario'] as int,
-        idTipoActividad = json['id_tipo_actividad'] as int,
-        idEstadoLote = json['id_estado_lote'] as int,
-        fechaHora = json['fecha_hora'] as String,
+      : id = (json['id_registro'] as int?) ?? 0,
+        idLote = (json['id_lote'] as int?) ?? 0,
+        idUsuario = (json['id_usuario'] as int?) ?? 0,
+        idTipoActividad = (json['id_tipo_actividad'] as int?) ?? 0,
+        idEstadoLote = (json['id_estado_lote'] as int?) ?? 0,
+        fechaHora = (json['fecha_hora'] as String?) ?? '',
         observacion = json['observacion'] as String?,
         ubicacionRegistro = json['ubicacion_registro'] as String?,
-        creadoEn = json['creado_en'] as String? ?? '',
+        creadoEn = (json['creado_en'] as String?) ?? '',
         variables = ((json['variables'] as List?) ?? [])
             .map((v) => VariableDetalleModel.fromJson(v as Map<String, dynamic>))
             .toList(),

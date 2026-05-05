@@ -219,7 +219,10 @@ class LoteRepositoryImpl implements LoteRepository {
   @override
   Future<Lote> obtenerLote(int idLote) async {
     final resp = await _dio.get('${AppConstants.lotesEndpoint}/$idLote');
-    return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 
   @override
@@ -241,8 +244,10 @@ class LoteRepositoryImpl implements LoteRepository {
       if (cantidadKg != null) 'cantidad_kg': cantidadKg,
       if (observaciones != null) 'observaciones': observaciones,
     });
-    final data = resp.data['data'] ?? resp.data;
-    return LoteModel.fromJson(data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 
   @override
@@ -257,7 +262,10 @@ class LoteRepositoryImpl implements LoteRepository {
       if (cantidadKg != null) 'cantidad_kg': cantidadKg,
       if (observaciones != null) 'observaciones': observaciones,
     });
-    return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 }
 
@@ -268,11 +276,13 @@ class RegistroRepositoryImpl implements RegistroRepository {
   @override
   Future<List<RegistroPostcosecha>> listarRegistros(int idLote) async {
     try {
-      final resp = await _dio.get('${AppConstants.lotesEndpoint}/$idLote/registros');
-      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
-          ? resp.data['data'] as List 
+      final resp = await _dio.get(AppConstants.registrosEndpoint);
+      final List rawList = (resp.data is Map && resp.data.containsKey('data'))
+          ? resp.data['data'] as List
           : resp.data as List;
-      return rawList
+      print('✓ Registros recibidos (${rawList.length}) para lote $idLote');
+      final filteredList = rawList.where((e) => (e['id_lote']?.toString() ?? '') == idLote.toString()).toList();
+      return filteredList
           .map((e) => RegistroPostcosechaModel.fromJson(e as Map<String, dynamic>).toDomain())
           .toList();
     } catch (e) {

@@ -14,13 +14,30 @@ MODELS = {
     "variedades": VariedadCafe,
     "estados-lote": EstadoLote,
     "tipos-actividad": TipoActividad,
+    "municipios": Municipio,
+    "variables": VariableMonitoreo,
 }
 
 @router.get("/{catalogo}")
-def list_catalog(catalogo: str, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario","Supervisor"))):
+def list_catalog(
+    catalogo: str,
+    id_departamento: int | None = None,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
     model = MODELS.get(catalogo)
     if not model:
         raise HTTPException(404, "Catálogo no soportado")
+
+    # Special-case: allow filtering municipios by departamento via query param
+    if catalogo == "municipios":
+        if id_departamento is not None:
+            rows = db.execute(select(Municipio).where(Municipio.id_departamento == id_departamento)).scalars().all()
+        else:
+            rows = db.execute(select(Municipio)).scalars().all()
+        return {"data": [orm_to_dict(r) for r in rows]}
+
+    # Default: return all rows for the requested model
     rows = db.execute(select(model)).scalars().all()
     return {"data": [orm_to_dict(r) for r in rows]}
 

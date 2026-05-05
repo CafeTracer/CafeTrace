@@ -94,16 +94,13 @@ class _LoteDetailBody extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Timeline de registros
-          Row(
-            children: [
-              const SectionTitle('Historial de actividades'),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => context.push('${AppRoutes.lots}/$idLote/records/new'),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Registrar'),
-              ),
-            ],
+          SectionTitle(
+            'Historial de actividades',
+            trailing: TextButton.icon(
+              onPressed: () => context.push('${AppRoutes.lots}/$idLote/records/new'),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Registrar'),
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -114,19 +111,20 @@ class _LoteDetailBody extends ConsumerWidget {
               onRetry: () => ref.invalidate(registrosProvider(idLote)),
             ),
             data: (registros) {
-              if (registros.isEmpty) {
+              final filteredRegistros = registros.where((r) => r.idLote == idLote).toList();
+              if (filteredRegistros.isEmpty) {
                 return const EmptyView(
                   message: 'Aún no hay registros postcosecha para este lote.',
                   icon: Icons.timeline_outlined,
                 );
               }
               return Column(
-                children: registros
+                children: filteredRegistros
                     .asMap()
                     .entries
                     .map((e) => _TimelineItem(
                           registro: e.value,
-                          isLast: e.key == registros.length - 1,
+                          isLast: e.key == filteredRegistros.length - 1,
                           idLote: idLote,
                         ))
                     .toList(),
@@ -167,20 +165,30 @@ class _LoteFicha extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _FichaRow(icon: Icons.landscape_outlined, label: 'Finca', value: lote.nombreFinca ?? '—'),
-          _FichaRow(icon: Icons.eco_outlined, label: 'Variedad', value: lote.nombreVariedad ?? '—'),
+          _FichaRow(
+            icon: Icons.landscape_outlined,
+            label: 'Finca',
+            value: lote.nombreFinca ?? 'Finca #${lote.idFinca}',
+          ),
+          _FichaRow(
+            icon: Icons.eco_outlined,
+            label: 'Variedad',
+            value: lote.nombreVariedad ?? 'Variedad #${lote.idVariedad}',
+          ),
           _FichaRow(
             icon: Icons.scale_outlined,
             label: 'Cantidad',
-            value: lote.cantidadKg != null ? '${lote.cantidadKg} kg' : '—',
+            value: lote.cantidadKg != null ? '${lote.cantidadKg!.toStringAsFixed(2)} kg' : 'Sin dato',
           ),
           _FichaRow(
             icon: Icons.calendar_today_outlined,
-            label: 'Registro',
+            label: 'Fecha registro',
             value: fmt.format(lote.fechaRegistro),
           ),
           if (lote.observaciones != null && lote.observaciones!.isNotEmpty)
             _FichaRow(icon: Icons.notes_outlined, label: 'Notas', value: lote.observaciones!),
+          if (lote.nombreEstado != null)
+            _FichaRow(icon: Icons.info_outline, label: 'Estado', value: lote.nombreEstado!),
         ],
       ),
     );
