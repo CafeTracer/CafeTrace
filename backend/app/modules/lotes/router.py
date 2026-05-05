@@ -12,14 +12,24 @@ router = APIRouter(prefix="/lotes", tags=["Lotes"])
 
 
 def get_estado_actual(db: Session, id_lote: int):
+    # Prefer the last registro_postcosecha as source of truth for the current
+    # estado; if none exists, fall back to the lote's `id_estado_lote_actual`
+    # column so freshly-created lotes show their initial state.
     ultimo = db.execute(
         select(RegistroPostcosecha).where(RegistroPostcosecha.id_lote == id_lote)
         .order_by(RegistroPostcosecha.fecha_hora.desc(), RegistroPostcosecha.id_registro.desc())
     ).scalars().first()
-    if not ultimo:
-        return None, None
-    estado = db.get(EstadoLote, ultimo.id_estado_lote)
-    return estado.nombre if estado else None, ultimo.fecha_hora
+    if ultimo:
+        estado = db.get(EstadoLote, ultimo.id_estado_lote)
+        return (estado.nombre if estado else None), ultimo.fecha_hora
+
+    # Fallback: read the lote row and use its stored id_estado_lote_actual
+    lote = db.get(Lote, id_lote)
+    if lote and getattr(lote, 'id_estado_lote_actual', None):
+        estado = db.get(EstadoLote, lote.id_estado_lote_actual)
+        return (estado.nombre if estado else None), None
+
+    return None, None
 
 @router.get("")
 def list_lotes(db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario","Supervisor"))):
