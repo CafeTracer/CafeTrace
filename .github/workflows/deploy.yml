@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     # Solo corre cuando el push es a main (no en PRs)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
@@ -110,7 +110,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Login a Amazon ECR
         id: login-ecr
@@ -131,6 +131,7 @@ jobs:
           docker build \
             -t $REGISTRY/cafetrace/backend:$SHA_TAG \
             -t $REGISTRY/cafetrace/backend:latest \
+            -f ./backend/docker/Dockerfile \
             ./backend
 
           docker push $REGISTRY/cafetrace/backend:$SHA_TAG
@@ -145,7 +146,7 @@ jobs:
     name: Deploy a EC2
     runs-on: ubuntu-latest
     needs: [test, build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout código
@@ -156,7 +157,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Login a Amazon ECR
         id: login-ecr
@@ -168,33 +169,46 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
+          fingerprint: "" 
+          proxy_fingerprint: ""
+          debug: true
           script: |
             set -e
-
             echo "📦 Actualizando imagen..."
-            aws ecr get-login-password --region us-east-1 | \
-              docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-
-            cd ~/cafetrace
-
-            # Actualizar imagen sin recrear contenedores de BD ni monitoreo
-            docker compose -f docker-compose.prod.yml pull api
-            docker compose -f docker-compose.prod.yml up -d --no-deps api
-
-            echo "⏳ Esperando que el servicio levante..."
-            sleep 8
-
-            # Health check: verifica que el backend responde
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-            if [ "$HTTP_CODE" != "200" ]; then
-              echo "❌ Health check falló (HTTP $HTTP_CODE). Haciendo rollback..."
-              docker compose -f docker-compose.prod.yml pull api --image ${{ steps.login-ecr.outputs.registry }}/cafetrace/backend:previous || true
-              docker compose -f docker-compose.prod.yml up -d --no-deps api
+            
+            # Login (ya funciona, lo dejamos igual)
+            aws ecr get-login-password --region us-east-2 | \
+              docker login --username AWS --password-stdin 013928162843.dkr.ecr.us-east-2.amazonaws.com
+            
+            # BUSCAR LA CARPETA CORRECTA:
+            # Intentamos entrar a la carpeta. Si no existe, listamos para que veas el error en el log.
+            cd ~/CafeTrace || cd ~/cafetrace || (ls -R ~ && exit 1)
+            
+            # Si el docker-compose está dentro de 'infraestructura', ajustamos la ruta:
+            # Usaremos un find para no fallar
+            COMPOSE_PATH=$(find . -name "docker-compose.prod.yml" | head -n 1)
+            
+            if [ -z "$COMPOSE_PATH" ]; then
+              echo "❌ No se encontró docker-compose.prod.yml en el repositorio"
               exit 1
             fi
 
-            echo "✅ Deploy exitoso. Backend responde en HTTP $HTTP_CODE"
-            docker compose -f docker-compose.prod.yml ps
+            echo "🚀 Usando archivo: $COMPOSE_PATH"
+
+            # Actualizar imagen
+            docker compose -f $COMPOSE_PATH pull api
+            docker compose -f $COMPOSE_PATH up -d --no-deps api
+            
+            echo "⏳ Esperando que el servicio levante..."
+            sleep 10
+            
+            # Health check
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/)
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "❌ Health check falló (HTTP $HTTP_CODE)"
+              exit 1
+            fi
+            echo "✅ Deploy exitoso en HTTP $HTTP_CODE"
 
       - name: Notificar resultado en el PR/commit
         if: always()

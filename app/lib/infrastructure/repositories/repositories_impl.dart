@@ -26,36 +26,48 @@ class AuthRepositoryImpl implements AuthRepository {
           contentType: Headers.formUrlEncodedContentType,
         ),
       );
-      print('✓ Login response: ${resp.data}');
+      print('✓ Login response received. Type: ${resp.data.runtimeType}');
+      print('✓ Login response data: ${resp.data}');
 
-      final tokenModel = LoginResponseModel.fromJson(resp.data as Map<String, dynamic>);
-      print('✓ Token extraído: ${tokenModel.accessToken}');
+      try {
+        final tokenModel = LoginResponseModel.fromJson(resp.data as Map<String, dynamic>);
+        print('✓ Token extraído: ${tokenModel.accessToken}');
 
-      // Guardar token en secure storage
-      await _storage.write(key: AppConstants.jwtTokenKey, value: tokenModel.accessToken);
-      print('✓ Token guardado');
+        // Guardar token en secure storage
+        await _storage.write(key: AppConstants.jwtTokenKey, value: tokenModel.accessToken);
+        print('✓ Token guardado');
 
-      // Obtener datos del usuario con el token recién guardado
-      final userResp = await _dio.get(AppConstants.meEndpoint);
-      print('✓ User response: ${userResp.data}');
+        // Obtener datos del usuario con el token recién guardado
+        final userResp = await _dio.get(AppConstants.meEndpoint);
+        print('✓ User response received. Type: ${userResp.data.runtimeType}');
+        print('✓ User response data: ${userResp.data}');
 
-      final usuario = UsuarioModel.fromJson(userResp.data as Map<String, dynamic>).toDomain();
-      print('✓ Usuario parseado: ${usuario.nombre}');
+        try {
+          final usuario = UsuarioModel.fromJson(userResp.data as Map<String, dynamic>).toDomain();
+          print('✓ Usuario parseado: ${usuario.nombre}');
 
-      // Persistir datos del usuario para uso offline
-      await _storage.write(key: AppConstants.userDataKey, value: jsonEncode({
-        'id_usuario': usuario.id,
-        'id_rol': usuario.idRol,
-        'nombre': usuario.nombre,
-        'apellido': usuario.apellido,
-        'correo': usuario.correo,
-        'telefono': usuario.telefono,
-        'activo': usuario.activo,
-        'fecha_creacion': usuario.fechaCreacion.toIso8601String(),
-      }));
-      print('✓ Datos del usuario guardados');
+          // Persistir datos del usuario para uso offline
+          await _storage.write(key: AppConstants.userDataKey, value: jsonEncode({
+            'id_usuario': usuario.id,
+            'id_rol': usuario.idRol,
+            'nombre': usuario.nombre,
+            'apellido': usuario.apellido,
+            'correo': usuario.correo,
+            'telefono': usuario.telefono,
+            'activo': usuario.activo,
+            'fecha_creacion': usuario.fechaCreacion.toIso8601String(),
+          }));
+          print('✓ Datos del usuario guardados');
 
-      return Sesion(token: tokenModel.accessToken, usuario: usuario);
+          return Sesion(token: tokenModel.accessToken, usuario: usuario);
+        } catch (e) {
+          print('✗ Error al parsear usuario: $e');
+          rethrow;
+        }
+      } catch (e) {
+        print('✗ Error al extraer token o usuario: $e');
+        rethrow;
+      }
     } catch (e) {
       print('✗ Error en login: $e');
       rethrow;
@@ -207,7 +219,10 @@ class LoteRepositoryImpl implements LoteRepository {
   @override
   Future<Lote> obtenerLote(int idLote) async {
     final resp = await _dio.get('${AppConstants.lotesEndpoint}/$idLote');
-    return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 
   @override
@@ -229,8 +244,10 @@ class LoteRepositoryImpl implements LoteRepository {
       if (cantidadKg != null) 'cantidad_kg': cantidadKg,
       if (observaciones != null) 'observaciones': observaciones,
     });
-    final data = resp.data['data'] ?? resp.data;
-    return LoteModel.fromJson(data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 
   @override
@@ -245,7 +262,10 @@ class LoteRepositoryImpl implements LoteRepository {
       if (cantidadKg != null) 'cantidad_kg': cantidadKg,
       if (observaciones != null) 'observaciones': observaciones,
     });
-    return LoteModel.fromJson(resp.data as Map<String, dynamic>).toDomain();
+    final data = resp.data is Map && resp.data.containsKey('data')
+        ? resp.data['data'] as Map<String, dynamic>
+        : resp.data as Map<String, dynamic>;
+    return LoteModel.fromJson(data).toDomain();
   }
 }
 
@@ -256,11 +276,13 @@ class RegistroRepositoryImpl implements RegistroRepository {
   @override
   Future<List<RegistroPostcosecha>> listarRegistros(int idLote) async {
     try {
-      final resp = await _dio.get('${AppConstants.lotesEndpoint}/$idLote/registros');
-      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
-          ? resp.data['data'] as List 
+      final resp = await _dio.get(AppConstants.registrosEndpoint);
+      final List rawList = (resp.data is Map && resp.data.containsKey('data'))
+          ? resp.data['data'] as List
           : resp.data as List;
-      return rawList
+      print('✓ Registros recibidos (${rawList.length}) para lote $idLote');
+      final filteredList = rawList.where((e) => (e['id_lote']?.toString() ?? '') == idLote.toString()).toList();
+      return filteredList
           .map((e) => RegistroPostcosechaModel.fromJson(e as Map<String, dynamic>).toDomain())
           .toList();
     } catch (e) {
@@ -281,7 +303,7 @@ class RegistroRepositoryImpl implements RegistroRepository {
     required List<({int idVariable, double valor, String? comentario})> variables,
   }) async {
     final resp = await _dio.post(
-      '${AppConstants.lotesEndpoint}/$idLote/registros',
+      '${AppConstants.registrosEndpoint}/lotes/$idLote',
       data: {
         'id_usuario': idUsuario,
         'id_tipo_actividad': idTipoActividad,
@@ -352,39 +374,86 @@ class CatalogoRepositoryImpl implements CatalogoRepository {
 
   @override
   Future<List<Catalogo>> listarVariedades() async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variedades');
-    return _mapList(resp.data as List, 'id_variedad');
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variedades');
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return _mapList(rawList, 'id_variedad');
+    } catch (e) {
+      print('✗ Error en listarVariedades: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<List<Catalogo>> listarEstadosLote() async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/estados-lote');
-    return _mapList(resp.data as List, 'id_estado_lote');
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/estados-lote');
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return _mapList(rawList, 'id_estado_lote');
+    } catch (e) {
+      print('✗ Error en listarEstadosLote: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<List<Catalogo>> listarTiposActividad() async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/tipos-actividad');
-    return _mapList(resp.data as List, 'id_tipo_actividad');
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/tipos-actividad');
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return _mapList(rawList, 'id_tipo_actividad');
+    } catch (e) {
+      print('✗ Error en listarTiposActividad: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<List<VariableMonitoreo>> listarVariablesMonitoreo() async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variables');
-    final list = resp.data as List;
-    return list.map((e) => VariableMonitoreoModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/variables');
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return rawList.map((e) => VariableMonitoreoModel.fromJson(e as Map<String, dynamic>).toDomain()).toList();
+    } catch (e) {
+      print('✗ Error en listarVariablesMonitoreo: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<List<Catalogo>> listarDepartamentos() async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/departamentos');
-    return _mapList(resp.data as List, 'id_departamento');
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/departamentos');
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return _mapList(rawList, 'id_departamento');
+    } catch (e) {
+      print('✗ Error en listarDepartamentos: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<List<Catalogo>> listarMunicipios(int idDepartamento) async {
-    final resp = await _dio.get('${AppConstants.catalogosEndpoint}/municipios', queryParameters: {'id_departamento': idDepartamento});
-    return _mapList(resp.data as List, 'id_municipio');
+    try {
+      final resp = await _dio.get('${AppConstants.catalogosEndpoint}/municipios', queryParameters: {'id_departamento': idDepartamento});
+      final List rawList = (resp.data is Map && resp.data.containsKey('data')) 
+          ? resp.data['data'] as List 
+          : resp.data as List;
+      return _mapList(rawList, 'id_municipio');
+    } catch (e) {
+      print('✗ Error en listarMunicipios: $e');
+      rethrow;
+    }
   }
 }
 

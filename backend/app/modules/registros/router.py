@@ -38,7 +38,16 @@ def delete_registro(id_registro: int, db: Session = Depends(get_db), _: object =
 
 @router.post("/lotes/{id_lote}")
 def create_batch(id_lote: int, payload: RegistroBatchCreate, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario"))):
-    with db.begin():
+    # Avoid starting a new top-level transaction if one already exists on the Session
+    # (FastAPI may reuse the same `get_db` dependency for auth). Use a nested
+    # transaction when inside an existing transaction to allow rollback of this
+    # unit without conflicting with the outer transaction.
+    if db.in_transaction():
+        tx_ctx = db.begin_nested()
+    else:
+        tx_ctx = db.begin()
+
+    with tx_ctx:
         registro = RegistroPostcosecha(
             id_lote=id_lote,
             id_usuario=payload.id_usuario,
@@ -72,4 +81,5 @@ def create_batch(id_lote: int, payload: RegistroBatchCreate, db: Session = Depen
                         nivel="Alta",
                     ))
                     alertas += 1
+
     return {"data": {"id_registro": registro.id_registro, "id_lote": id_lote, "alertas_generadas": alertas}}

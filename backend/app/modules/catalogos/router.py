@@ -14,14 +14,71 @@ MODELS = {
     "variedades": VariedadCafe,
     "estados-lote": EstadoLote,
     "tipos-actividad": TipoActividad,
+    "municipios": Municipio,
+    "variables": VariableMonitoreo,
 }
 
 @router.get("/{catalogo}")
-def list_catalog(catalogo: str, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario","Supervisor"))):
-    model = MODELS.get(catalogo)
-    if not model:
-        raise HTTPException(404, "Catálogo no soportado")
+def list_catalog(
+    catalogo: str,
+    id_departamento: int | None = None,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
+    # Normalize and perform case-insensitive lookup to be resilient to client variations
+    catalogo_key = (catalogo or '').strip().lower()
+
+    # Handle known special catalogs directly to avoid matching issues
+    if catalogo_key in ("municipios", "municipio"):
+        if id_departamento is not None:
+            rows = db.execute(select(Municipio).where(Municipio.id_departamento == id_departamento)).scalars().all()
+        else:
+            rows = db.execute(select(Municipio)).scalars().all()
+        return {"data": [orm_to_dict(r) for r in rows]}
+
+    if catalogo_key in ("variables", "variable"):
+        rows = db.execute(select(VariableMonitoreo)).scalars().all()
+        return {"data": [orm_to_dict(r) for r in rows]}
+
+    # Generic lookup in MODELS with fallbacks for pluralization and separators
+    model = next((m for k, m in MODELS.items() if k.lower() == catalogo_key), None)
+    if model is None and catalogo_key.endswith('s'):
+        base = catalogo_key[:-1]
+        model = next((m for k, m in MODELS.items() if k.lower() == base), None)
+    if model is None:
+        alt = catalogo_key.replace('-', '_')
+        model = next((m for k, m in MODELS.items() if k.lower() == alt), None)
+    if model is None:
+        available = ','.join(list(MODELS.keys()))
+        detail = f"Catálogo no soportado: requested='{catalogo}', normalized='{catalogo_key}', available=[{available}]"
+        # Also print to server logs for operators
+        print(f"DEBUG: {detail}")
+        raise HTTPException(status_code=404, detail=detail)
+
+    # Default: return all rows for the requested model
     rows = db.execute(select(model)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in rows]}
+
+
+@router.get('/municipios')
+def list_municipios(
+    id_departamento: int | None = None,
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
+    if id_departamento is not None:
+        rows = db.execute(select(Municipio).where(Municipio.id_departamento == id_departamento)).scalars().all()
+    else:
+        rows = db.execute(select(Municipio)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in rows]}
+
+
+@router.get('/variables')
+def list_variables(
+    db: Session = Depends(get_db),
+    _: object = Depends(require_roles("Administrador","Operario","Supervisor")),
+):
+    rows = db.execute(select(VariableMonitoreo)).scalars().all()
     return {"data": [orm_to_dict(r) for r in rows]}
 
 @router.post("/departamentos")

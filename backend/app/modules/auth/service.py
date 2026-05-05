@@ -15,4 +15,10 @@ class AuthService:
         if not user.activo:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo")
         token = create_access_token(user.id_usuario, user.correo, user.rol.nombre)
-        return {"access_token": token, "token_type": "bearer"}
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "id_usuario": user.id_usuario,
+            "id_rol": user.id_rol,
+            "rol": user.rol.nombre,
+        }

@@ -30,7 +30,9 @@ def list_lotes(db: Session = Depends(get_db), _: object = Depends(require_roles(
         data.append({
             "id_lote": row.id_lote,
             "id_finca": row.id_finca,
+            "nombre_finca": row.finca.nombre if row.finca else None,
             "id_variedad": row.id_variedad,
+            "nombre_variedad": row.variedad.nombre if row.variedad else None,
             "codigo_lote": row.codigo_lote,
             "fecha_registro": row.fecha_registro,
             "cantidad_kg": row.cantidad_kg,
@@ -50,15 +52,26 @@ def detail_lote(id_lote: int, db: Session = Depends(get_db), _: object = Depends
     return {"data": {
         "id_lote": row.id_lote,
         "id_finca": row.id_finca,
+        "nombre_finca": row.finca.nombre if row.finca else None,
         "id_variedad": row.id_variedad,
+        "nombre_variedad": row.variedad.nombre if row.variedad else None,
         "codigo_lote": row.codigo_lote,
         "fecha_registro": row.fecha_registro,
         "cantidad_kg": row.cantidad_kg,
         "observaciones": row.observaciones,
         "activo": row.activo,
         "estado_actual": estado,
+        "nombre_estado": estado,
         "fecha_estado_actual": fecha,
     }}
+
+@router.get("/{id_lote}/registros")
+def list_registros_lote(id_lote: int, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario","Supervisor"))):
+    lote = db.get(Lote, id_lote)
+    if not lote:
+        raise HTTPException(404, "Lote no encontrado")
+    registros = db.execute(select(RegistroPostcosecha).where(RegistroPostcosecha.id_lote == id_lote)).scalars().all()
+    return {"data": [orm_to_dict(r) for r in registros]}
 
 @router.post("")
 def create_lote(payload: LoteCreate, db: Session = Depends(get_db), _: object = Depends(require_roles("Administrador","Operario"))):
