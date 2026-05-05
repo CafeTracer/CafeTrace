@@ -82,4 +82,14 @@ def create_batch(id_lote: int, payload: RegistroBatchCreate, db: Session = Depen
                     ))
                     alertas += 1
 
+    # Ensure persistence: commit the session so changes are visible to subsequent
+    # read requests (some deployment setups may leave an outer transaction
+    # uncommitted). If commit fails, rollback and re-raise the exception so the
+    # client receives an error.
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
     return {"data": {"id_registro": registro.id_registro, "id_lote": id_lote, "alertas_generadas": alertas}}
